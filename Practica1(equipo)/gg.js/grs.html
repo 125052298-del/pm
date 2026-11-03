@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Raster 10x10 y color por z</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      display: flex;
+      gap: 30px;
+    }
+    .panel-controls {
+      width: 320px;
+    }
+    .input-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      padding: 6px;
+      box-sizing: border-box;
+    }
+    button {
+      padding: 8px 12px;
+      margin-right: 8px;
+      margin-top: 8px;
+      cursor: pointer;
+    }
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(10, 40px);
+      gap: 2px;
+      background-color: #ccc;
+      padding: 2px;
+      border: 1px solid #999;
+    }
+    .cell {
+      width: 40px;
+      height: 40px;
+      background-color: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: #333;
+    }
+    .palette {
+      display: flex;
+      height: 20px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    .palette-color {
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel-controls">
+    <h2>Raster 10×10 y color por z</h2>
+    
+    <div class="input-group">
+      <label>Coordenada x (0-9):</label>
+      <input type="number" id="coordX" min="0" max="9" value="0">
+    </div>
+
+    <div class="input-group">
+      <label>Coordenada y (0-9):</label>
+      <input type="number" id="coordY" min="0" max="9" value="0">
+    </div>
+
+    <div class="input-group">
+      <input type="checkbox" id="sortXY">
+      <label for="sortXY" style="display:inline;">Ordenar x, y</label>
+    </div>
+
+    <div class="input-group">
+      <label>Valor z del punto:</label>
+      <input type="text" id="valZ" placeholder="Ej. 12.3 (vacío = aleatorio)">
+    </div>
+
+    <button onclick="aplicarPunto()">Aplicar punto x,y,z</button>
+    <button onclick="randomizarRaster()">Randomizar todo el raster</button>
+
+    <div style="margin-top: 20px;">
+      <p><strong>z mín:</strong> <span id="zMin">-</span></p>
+      <p><strong>z máx:</strong> <span id="zMax">-</span></p>
+    </div>
+
+    <div>
+      <label>Paleta de colores (Azul → Rojo):</label>
+      <div class="palette" id="paletteBar"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="grid-container" id="grid"></div>
+  </div>
+
+  <script>
+    // Paleta de 10 colores (de azul a rojo)
+    const PALETTE = [
+      "#3b82f6", "#60a5fa", "#93c5fd", "#a7f3d0", 
+      "#fef08a", "#fde047", "#facc15", "#fb923c", 
+      "#f87171", "#ef4444"
+    ];
+
+    // Matriz de 10x10 inicializada en cero
+    let rasterData = Array.from({ length: 10 }, () => Array(10).fill(0));
+
+    function initPaletteUI() {
+      const bar = document.getElementById("paletteBar");
+      bar.innerHTML = "";
+      PALETTE.forEach(color => {
+        const div = document.createElement("div");
+        div.className = "palette-color";
+        div.style.backgroundColor = color;
+        bar.appendChild(div);
+      });
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+
+      // Calcular min y max
+      let min = Infinity;
+      let max = -Infinity;
+
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          const val = rasterData[y][x];
+          if (val < min) min = val;
+          if (val > max) max = val;
+        }
+      }
+
+      document.getElementById("zMin").innerText = min.toFixed(2);
+      document.getElementById("zMax").innerText = max.toFixed(2);
+
+      // Dibujar celdas
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          const val = rasterData[y][x];
+          const cell = document.createElement("div");
+          cell.className = "cell";
+
+          // Mapear valor a índice de color (0 a 9)
+          let colorIndex = 0;
+          if (max !== min) {
+            colorIndex = Math.floor(((val - min) / (max - min)) * (PALETTE.length - 1));
+          }
+
+          cell.style.backgroundColor = PALETTE[colorIndex];
+          grid.appendChild(cell);
+        }
+      }
+    }
+
+    function aplicarPunto() {
+      let x = parseInt(document.getElementById("coordX").value) || 0;
+      let y = parseInt(document.getElementById("coordY").value) || 0;
+      const sort = document.getElementById("sortXY").checked;
+      const zInput = document.getElementById("valZ").value.trim();
+
+      if (sort && x > y) {
+        let temp = x;
+        x = y;
+        y = temp;
+      }
+
+      // Restringir rangos 0-9
+      x = Math.max(0, Math.min(9, x));
+      y = Math.max(0, Math.min(9, y));
+
+      let z = zInput === "" ? (Math.random() * 200 - 100) : parseFloat(zInput);
+      if (isNaN(z)) z = 0;
+
+      rasterData[y][x] = z;
+      renderGrid();
+    }
+
+    function randomizarRaster() {
+      for (let y = 0; y < 10; y++) {
+        for (let x = 0; x < 10; x++) {
+          rasterData[y][x] = Math.random() * 200 - 100; // Valores entre -100 y 100
+        }
+      }
+      renderGrid();
+    }
+
+    // Inicializar app
+    initPaletteUI();
+    randomizarRaster();
+  </script>
+</body>
+</html>
